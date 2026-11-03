@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import type { AuthUser, GenerateRun, Match, Post, RegenerationRequest, ScriptPart, ScriptReview, ScriptSummary, ScriptVersion, TeardownSummary } from '../types';
+import type {
+  AuthUser,
+  GenerateRun,
+  Match,
+  Post,
+  RegenerationRequest,
+  ScriptPart,
+  ScriptReview,
+  ScriptSummary,
+  ScriptVersion,
+  TeardownSummary,
+} from '../types';
 import { api } from '../api';
 import { errorText, fmtDateTime, fmtPct, fmtX, readableError } from '../format';
 import { Collapse, CollapseToggle, Icon, ScriptTag, Thumb, stagger } from './common';
@@ -213,10 +224,22 @@ export function ScriptsPage({ scripts, requests, user, selectedPostId, onSelect,
       <div className="script-layout">
         <section className="script-list-panel" aria-label="All scripts">
           <div className="script-tabs" role="tablist" aria-label="Teardowns and scripts">
-            <button type="button" role="tab" aria-selected={tab === 'teardowns'} className={tab === 'teardowns' ? 'active' : ''} onClick={() => switchTab('teardowns')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'teardowns'}
+              className={tab === 'teardowns' ? 'active' : ''}
+              onClick={() => switchTab('teardowns')}
+            >
               <Icon name="movie" /> Teardowns <span className="tab-count">{teardowns.length}</span>
             </button>
-            <button type="button" role="tab" aria-selected={tab === 'scripts'} className={tab === 'scripts' ? 'active' : ''} onClick={() => switchTab('scripts')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'scripts'}
+              className={tab === 'scripts' ? 'active' : ''}
+              onClick={() => switchTab('scripts')}
+            >
               <Icon name="edit_note" /> Scripts <span className="tab-count">{scripts.length}</span>
             </button>
           </div>
@@ -291,18 +314,20 @@ export function ScriptsPage({ scripts, requests, user, selectedPostId, onSelect,
           )}
           {tab === 'scripts' && (
             <>
-              {inProgress.filter(({ run }) => run.step === 'script').map(({ post, run }) => (
-                <div key={post.post_id} className="script-row is-generating" role="status">
-                  <Thumb src={post.thumbnail} label={post.competitor} />
-                  <span className="script-row-copy">
-                    <b>{post.caption || `${post.competitor} post`}</b>
-                    <small>
-                      {post.competitor} · Step {STEP_INDEX[run.step ?? 'teardown'] + 1} of 3: {STEP_LABEL[run.step ?? 'teardown']}
-                    </small>
-                  </span>
-                  <Icon name="progress_activity" className="spin" />
-                </div>
-              ))}
+              {inProgress
+                .filter(({ run }) => run.step === 'script')
+                .map(({ post, run }) => (
+                  <div key={post.post_id} className="script-row is-generating" role="status">
+                    <Thumb src={post.thumbnail} label={post.competitor} />
+                    <span className="script-row-copy">
+                      <b>{post.caption || `${post.competitor} post`}</b>
+                      <small>
+                        {post.competitor} · Step {STEP_INDEX[run.step ?? 'teardown'] + 1} of 3: {STEP_LABEL[run.step ?? 'teardown']}
+                      </small>
+                    </span>
+                    <Icon name="progress_activity" className="spin" />
+                  </div>
+                ))}
               {shown.map((s, i) => (
                 <button
                   key={s.post_id}
@@ -371,12 +396,18 @@ export function ScriptsPage({ scripts, requests, user, selectedPostId, onSelect,
             onRegenerate={() => setDialog('regenerate')}
           />
         ) : review && review.teardown ? (
-          <TeardownView review={review} run={run} onGenerate={() => onGenerate(review.post.post_id)} />
+          <TeardownView key={review.post.post_id} review={review} run={run} onGenerate={() => onGenerate(review.post.post_id)} />
         ) : (
           <article className="script-detail">
             <div className="detail-empty">
               <Icon name="edit_note" />
-              {postId == null ? (tab === 'teardowns' ? 'Pick a teardown to see it.' : 'Pick a script to review it.') : review ? 'This reel has no teardown yet.' : 'Loading…'}
+              {postId == null
+                ? tab === 'teardowns'
+                  ? 'Pick a teardown to see it.'
+                  : 'Pick a script to review it.'
+                : review
+                  ? 'This reel has no teardown yet.'
+                  : 'Loading…'}
             </div>
           </article>
         )}
@@ -431,6 +462,10 @@ function TeardownView({ review, run, onGenerate }: { review: ScriptReview; run?:
   const { post, teardown: td, match } = review;
   const fits = !!match?.product_code;
   const running = !!run?.running;
+  // Like a script: the product sits on top, the rest starts shut.
+  const [open, setOpen] = useState({ reel: false, product: false });
+  const toggle = (part: keyof typeof open) => setOpen((o) => ({ ...o, [part]: !o[part] }));
+  const strength = !match ? '' : !fits || match.confidence < 0.5 ? 'weak' : match.confidence >= 0.75 ? 'strong' : '';
   const note = run?.error
     ? readableError(run.error)
     : !match
@@ -454,6 +489,20 @@ function TeardownView({ review, run, onGenerate }: { review: ScriptReview; run?:
         </div>
       </div>
 
+      {match && (
+        <div className={`product-hero ${strength}`}>
+          <span className="ph-icon">
+            <Icon name="sell" />
+          </span>
+          <span className="ph-copy">
+            <small>{fits ? 'Stashfin product for this reel' : 'No Stashfin product fits this reel'}</small>
+            <b>{fits ? (match.product_name ?? match.product_code) : `Closest: ${match.alternatives[0]?.product_name ?? match.product_name ?? 'none'}`}</b>
+            {match.customer_need && <span>{match.customer_need}</span>}
+          </span>
+          <span className={`match-pill ${strength}`}>{fmtPct(match.confidence)} match</span>
+        </div>
+      )}
+
       <div className="script-stagebar">
         <span className="done">01 Teardown</span>
         <i>→</i>
@@ -464,46 +513,72 @@ function TeardownView({ review, run, onGenerate }: { review: ScriptReview; run?:
 
       {td && (
         <>
-          <SectionHead icon="movie" tone="purple" title="The original reel" meta={[td.format, td.tone].filter(Boolean).join(' · ')} />
-          <section className="teardown-card">
-            {td.hook && <p className="teardown-hook">Hook · {td.hook}</p>}
-            {td.themes.length > 0 && (
-              <div className="teardown-beats">
-                {td.themes.slice(0, 6).map((t) => (
-                  <span key={t}>{t}</span>
-                ))}
-              </div>
-            )}
-            {td.why_it_worked && (
-              <p>
-                <b>Why it worked:</b> {td.why_it_worked}
-              </p>
-            )}
-            {td.beats.length > 0 && (
-              <details>
-                <summary>Beat by beat ({td.beats.length})</summary>
-                <ol className="beat-list">
-                  {td.beats.map((bt, i) => (
-                    <li key={i}>
-                      {(bt.t_start || bt.t_end) && <small>{[bt.t_start, bt.t_end].filter(Boolean).join('–')} </small>}
-                      {bt.visual_action}
-                      {bt.dialogue && <q>{bt.dialogue}</q>}
-                    </li>
+          <SectionHead
+            icon="movie"
+            tone="purple"
+            title="The original reel"
+            meta={[td.format, td.tone, td.beats.length ? `${td.beats.length} beats` : ''].filter(Boolean).join(' · ')}
+            toggle={{ open: open.reel, onToggle: () => toggle('reel'), controls: 'teardown-reel' }}
+          />
+          <Collapse open={open.reel} id="teardown-reel">
+            <section className="teardown-card">
+              {td.hook && <p className="teardown-hook">Hook · {td.hook}</p>}
+              {td.themes.length > 0 && (
+                <div className="teardown-beats">
+                  {td.themes.slice(0, 6).map((t) => (
+                    <span key={t}>{t}</span>
                   ))}
-                </ol>
-              </details>
-            )}
-            {td.transcript && (
-              <details>
-                <summary>Transcript</summary>
-                <p style={{ whiteSpace: 'pre-line', maxHeight: 220, overflow: 'auto' }}>{td.transcript}</p>
-              </details>
-            )}
-          </section>
+                </div>
+              )}
+              {td.why_it_worked && (
+                <p>
+                  <b>Why it worked:</b> {td.why_it_worked}
+                </p>
+              )}
+              {td.beats.length > 0 && (
+                <details>
+                  <summary>Beat by beat ({td.beats.length})</summary>
+                  <ol className="beat-list">
+                    {td.beats.map((bt, i) => (
+                      <li key={i}>
+                        {(bt.t_start || bt.t_end) && <small>{[bt.t_start, bt.t_end].filter(Boolean).join('–')} </small>}
+                        {bt.visual_action}
+                        {bt.dialogue && <q>{bt.dialogue}</q>}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+              {td.transcript && (
+                <details>
+                  <summary>Transcript</summary>
+                  <p style={{ whiteSpace: 'pre-line', maxHeight: 220, overflow: 'auto' }}>{td.transcript}</p>
+                </details>
+              )}
+            </section>
+          </Collapse>
         </>
       )}
 
-      {match && fits && <WhyThisProduct match={match} />}
+      {match && fits && (
+        <>
+          <SectionHead
+            icon="sell"
+            tone="green"
+            title="Why this product"
+            meta={[
+              match.angle ? 'Creative angle' : '',
+              match.alternatives.length ? `${match.alternatives.length} other ${match.alternatives.length === 1 ? 'option' : 'options'}` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            toggle={{ open: open.product, onToggle: () => toggle('product'), controls: 'teardown-product' }}
+          />
+          <Collapse open={open.product} id="teardown-product">
+            <MatchDetails match={match} />
+          </Collapse>
+        </>
+      )}
 
       <div className="script-review-actions">
         {running && run ? <GenerateProgress run={run} /> : <span className={run?.error ? 'error-text' : ''}>{note}</span>}
@@ -519,22 +594,10 @@ function TeardownView({ review, run, onGenerate }: { review: ScriptReview; run?:
   );
 }
 
-/** Which product fits and why, in full. */
-function WhyThisProduct({ match }: { match: Match }) {
-  const strength = match.confidence >= 0.75 ? 'strong' : match.confidence >= 0.5 ? '' : 'weak';
+/** Why the product fits: the reason, the customer need, the angle and what else was considered. */
+function MatchDetails({ match }: { match: Match }) {
   return (
-    <>
-      <SectionHead icon="sell" tone="green" title="Why this product" />
-      <div className={`product-hero ${strength}`}>
-        <span className="ph-icon">
-          <Icon name="sell" />
-        </span>
-        <span className="ph-copy">
-          <small>Matched Stashfin product</small>
-          <b>{match.product_name ?? match.product_code}</b>
-        </span>
-        <span className={`match-pill ${strength}`}>{fmtPct(match.confidence)} match</span>
-      </div>
+    <div className="match-details">
       {match.reason && <p className="script-why match-reason">{match.reason}</p>}
       <div className="match-facts">
         {match.customer_need && (
@@ -561,7 +624,7 @@ function WhyThisProduct({ match }: { match: Match }) {
           Also considered: {match.alternatives.map((a) => `${a.product_name ?? a.product_code} (${fmtPct(a.confidence)} match)`).join(' · ')}
         </p>
       )}
-    </>
+    </div>
   );
 }
 

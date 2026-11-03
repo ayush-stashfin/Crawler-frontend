@@ -21,14 +21,6 @@ const pageFromHash = (): Page => {
   return PAGES.includes(p) ? p : 'trending';
 };
 
-const readNavCollapsed = () => {
-  try {
-    return localStorage.getItem('outlier-nav') === 'collapsed';
-  } catch {
-    return false;
-  }
-};
-
 type Theme = 'light' | 'dark';
 const readTheme = (): Theme => {
   try {
@@ -144,16 +136,9 @@ function Dashboard({ user, onSignOut, theme, onTheme }: DashboardProps) {
   const [scriptPostId, setScriptPostId] = useState<number | null>(null);
   const [searching, setSearching] = useState(false);
   const [picking, setPicking] = useState(false);
-  const [navCollapsed, setNavCollapsed] = useState(readNavCollapsed);
-  const toggleNav = () =>
-    setNavCollapsed((c) => {
-      try {
-        localStorage.setItem('outlier-nav', c ? 'open' : 'collapsed');
-      } catch {
-        // storage blocked: the choice lasts for this visit only
-      }
-      return !c;
-    });
+  // The sidebar always opens expanded; collapsing it lasts for this visit only.
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  const toggleNav = () => setNavCollapsed((c) => !c);
   usePointerGlow();
 
   const setPage = useCallback((p: Page) => {
